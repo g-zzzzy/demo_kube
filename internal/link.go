@@ -48,10 +48,15 @@ type LinkCache struct {
 	SrcNode Node
 	DstNode Node
 
-	// for peneration calculation
-	PenetrationFloors int64
+	EnvIndex EnvironmentIndex
 
 	Ar float64
+}
+
+type EnvironmentIndex struct {
+	Temperature2m float64
+	Precipitation float64
+	Pressure      float64 // hPa
 }
 
 func readStationsCount(filename string, count int) ([]*Station, error) {
@@ -346,12 +351,7 @@ func CalculateSatelliteLink(link *LinkCache, satellitePos Position, stationPos P
 	//天气数据的获取
 	// weatherIndex := getWeather(stationPos)
 	// weatherIndex := getWeatherFromFile(stationPos)
-	weatherIndex := WeatherIndex{
-		T:             0,
-		precipitation: 10,
-		P:             0,
-	}
-	pre := weatherIndex.precipitation
+	pre := link.EnvIndex.Precipitation
 	latGS, lonGS := stationPos.Latitude, stationPos.Longitude
 	el := utils.Elevation_angle(satellitePos.Altitude, satellitePos.Latitude, satellitePos.Longitude, latGS, lonGS)
 

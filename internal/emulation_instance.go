@@ -11,6 +11,7 @@ type EmulationInstance struct {
 	Scheduler  *EventBus
 	Satellites []*Satellite
 	Stations   []*Station
+	Links      []LinkCache
 }
 
 func NewEmulationInstanceScale(stationCount, satelliteCount int) (*EmulationInstance, error) {
@@ -119,14 +120,34 @@ func updateStationPositions(stations []*Station, timestamp time.Time) {
 	log.Printf("updateStationPositions took %v", endTime.Sub(startTime))
 }
 
-func (e *EmulationInstance) EasyCalculateLinks(timestamp time.Time) error {
-	// log.Println("instance: EasyCalculateLinks")
-	satellites := e.Satellites
-	stations := e.Stations
-	updateSatellitePositions(satellites, timestamp)
-	updateStationPositions(stations, timestamp)
-	links := MakeLinks(stations, satellites)
+func getWeatherBasedOnTerminal(terminal *Station, timestamp time.Time) EnvironmentIndex {
+
+	return EnvironmentIndex{Temperature2m: 10.0, Precipitation: 0.0, Pressure: 1010.0} // 模拟返回一些天气数据
+}
+
+func updateEnvironmentIndex(links []LinkCache, timestamp time.Time) {
+	log.Println("updateEnvironmentIndex...")
 	startTime := time.Now()
+	count := 0
+	for i := range links {
+		link := &links[i]
+		dst, ok := link.DstNode.(*Station)
+		if !ok {
+			log.Printf("Error: DstNode is not a Station")
+			continue
+		}
+		count++
+		EnvironmentIndex := getWeatherBasedOnTerminal(dst, timestamp)
+		link.EnvIndex = EnvironmentIndex
+	}
+	log.Printf("updateEnvironmentIndex count: %d", count)
+	log.Printf("updateEnvironmentIndex took %v", time.Since(startTime))
+}
+
+func updateLinkProperties(links []LinkCache) {
+	log.Println("updateLinkProperties...")
+	startTime := time.Now()
+	count := 0
 	for i := range links {
 		link := &links[i]
 		sat, ok := link.SrcNode.(*Satellite)
@@ -139,14 +160,26 @@ func (e *EmulationInstance) EasyCalculateLinks(timestamp time.Time) error {
 			log.Printf("Error: DstNode is not a Station")
 			continue
 		}
-		_ = sat.Position
-		_ = dst.position
+		srcPos := sat.Position
+		dstPos := dst.position
+		count++
+		link.Ar = CalculateSatelliteLink(link, srcPos, dstPos)
 
-		// Ar := CalculateSatelliteLink(link, srcPos, dstPos)
-		link.Ar = 0
 	}
-	log.Println("links count: ", len(links))
-	log.Println("LinkCal took: ", time.Since(startTime))
+	log.Printf("updateLinkProperties count: %d", count)
+	log.Printf("updateLinkProperties took %v", time.Since(startTime))
+}
+
+func (e *EmulationInstance) EasyCalculateLinks(timestamp time.Time) error {
+	// log.Println("instance: EasyCalculateLinks")
+
+	updateSatellitePositions(e.Satellites, timestamp)
+	// updateStationPositions(e.Stations, timestamp)
+	e.Links = MakeLinks(e.Stations, e.Satellites)
+	updateEnvironmentIndex(e.Links, timestamp)
+	updateLinkProperties(e.Links)
+
+	log.Println("links count: ", len(e.Links))
 	// log.Println("Satellite size:", unsafe.Sizeof(Satellite{}))
 	// log.Println("Station size:", unsafe.Sizeof(Station{}))
 	// log.Println("LinkCache size:", unsafe.Sizeof(LinkCache{}))
