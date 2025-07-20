@@ -39,9 +39,9 @@ func (eb *EventBus) PublishWithWait(evt Event, wg *sync.WaitGroup) {
 }
 
 func (eb *EventBus) Start() {
-	log.Println("scheduler.Start")
+	// log.Println("scheduler.Start")
 	go func() {
-		log.Println("scheduler goroutine running")
+		// log.Println("scheduler goroutine running")
 		for evt := range eb.eventQueue {
 			eb.dispatch(evt)
 		}
@@ -49,7 +49,7 @@ func (eb *EventBus) Start() {
 }
 
 func (eb *EventBus) dispatch(evtWrapper EventWrapper) {
-	log.Printf("Scheduler: Dispatching event")
+	// log.Printf("Scheduler: Dispatching event")
 	// eb.mu.RLock()
 	evt := evtWrapper.Event
 	wg := evtWrapper.Wg

@@ -100,12 +100,15 @@ func MakeLinks(stations []*Station, satellites []*Satellite) []LinkCache {
 func updateSatellitePositions(satellites []*Satellite, timestamp time.Time) {
 	log.Println("updateSatellitePositions...")
 	startTime := time.Now()
+	cnt := 0
 	for i := range satellites {
 		satellite := satellites[i]
 		// satellite.GetPosition(timestamp)
 		satellite.Position = satellite.GetPosition(timestamp)
+		cnt++
 	}
 	endTime := time.Now()
+	log.Printf("satellite count: %d", cnt)
 	log.Printf("updateSatellitePositions took %v", endTime.Sub(startTime))
 }
 
@@ -125,21 +128,27 @@ func getWeatherBasedOnTerminal(terminal *Station, timestamp time.Time) Environme
 	return EnvironmentIndex{Temperature2m: 10.0, Precipitation: 0.0, Pressure: 1010.0} // 模拟返回一些天气数据
 }
 
-func updateEnvironmentIndex(links []LinkCache, timestamp time.Time) {
+func updateEnvironmentIndex(stations []*Station, timestamp time.Time) {
 	log.Println("updateEnvironmentIndex...")
 	startTime := time.Now()
 	count := 0
-	for i := range links {
-		link := &links[i]
-		dst, ok := link.DstNode.(*Station)
-		if !ok {
-			log.Printf("Error: DstNode is not a Station")
-			continue
-		}
+	for i := range stations {
+		station := stations[i]
+		station.WeatherIdx = getWeatherBasedOnTerminal(station, timestamp)
 		count++
-		EnvironmentIndex := getWeatherBasedOnTerminal(dst, timestamp)
-		link.EnvIndex = EnvironmentIndex
 	}
+
+	// for i := range links {
+	// 	link := &links[i]
+	// 	dst, ok := link.DstNode.(*Station)
+	// 	if !ok {
+	// 		log.Printf("Error: DstNode is not a Station")
+	// 		continue
+	// 	}
+	// 	count++
+	// 	EnvironmentIndex := getWeatherBasedOnTerminal(dst, timestamp)
+	// 	link.EnvIndex = EnvironmentIndex
+	// }
 	log.Printf("updateEnvironmentIndex count: %d", count)
 	log.Printf("updateEnvironmentIndex took %v", time.Since(startTime))
 }
@@ -163,7 +172,7 @@ func updateLinkProperties(links []LinkCache) {
 		srcPos := sat.Position
 		dstPos := dst.position
 		count++
-		link.Ar = CalculateSatelliteLink(link, srcPos, dstPos)
+		link.Ar = CalculateSatelliteLink(link, srcPos, dstPos, dst.WeatherIdx.Precipitation)
 
 	}
 	log.Printf("updateLinkProperties count: %d", count)
@@ -176,7 +185,8 @@ func (e *EmulationInstance) EasyCalculateLinks(timestamp time.Time) error {
 	updateSatellitePositions(e.Satellites, timestamp)
 	// updateStationPositions(e.Stations, timestamp)
 	e.Links = MakeLinks(e.Stations, e.Satellites)
-	updateEnvironmentIndex(e.Links, timestamp)
+	// updateEnvironmentIndex(e.Links, timestamp)
+	updateEnvironmentIndex(e.Stations, timestamp)
 	updateLinkProperties(e.Links)
 
 	log.Println("links count: ", len(e.Links))

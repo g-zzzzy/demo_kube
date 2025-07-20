@@ -346,12 +346,12 @@ func getWeatherFromFile(stationPos Position) WeatherIndex {
 	return WeatherIndex{}
 }
 
-func CalculateSatelliteLink(link *LinkCache, satellitePos Position, stationPos Position) float64 {
+func CalculateSatelliteLink(link *LinkCache, satellitePos Position, stationPos Position, pre float64) float64 {
 	//TODO
 	//天气数据的获取
 	// weatherIndex := getWeather(stationPos)
 	// weatherIndex := getWeatherFromFile(stationPos)
-	pre := link.EnvIndex.Precipitation
+	// pre := link.EnvIndex.Precipitation
 	latGS, lonGS := stationPos.Latitude, stationPos.Longitude
 	el := utils.Elevation_angle(satellitePos.Altitude, satellitePos.Latitude, satellitePos.Longitude, latGS, lonGS)
 

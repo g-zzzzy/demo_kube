@@ -25,7 +25,7 @@ type Satellite struct {
 type Station struct {
 	Node
 	position   Position
-	WeatherIdx WeatherIndex
+	WeatherIdx EnvironmentIndex
 }
 
 type Position struct {
