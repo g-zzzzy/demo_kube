@@ -4,10 +4,11 @@ import (
 	internal "demokubenet/internal"
 	"fmt"
 	"log"
+	_ "net/http/pprof"
 	"os"
 	"strconv"
-	"sync"
 	"time"
+	"unsafe"
 )
 
 func main() {
@@ -34,15 +35,16 @@ func main() {
 	}
 
 	// 启动scheduler
-	inst.Start()
+	// inst.Start()
 
 	for i := 0; i < round; i++ {
-		var wg sync.WaitGroup
-		wg.Add(1)
+		inst.EasyCalculateLinks(time.Now())
+		// var wg sync.WaitGroup
+		// wg.Add(1)
 
-		inst.Scheduler.PublishWithWait(internal.Event{Type: internal.EasyEvent}, &wg)
+		// inst.Scheduler.PublishWithWait(internal.Event{Type: internal.EasyEvent}, &wg)
 
-		wg.Wait()
+		// wg.Wait()
 		log.Printf("Run %d complete\n", i+1)
 	}
 
@@ -55,6 +57,7 @@ func main() {
 
 	endTime := time.Now()
 	log.Println("interval = ", endTime.Sub(startTime))
+	log.Println("linkCache size:", unsafe.Sizeof(internal.LinkCache{}))
 	// }
 
 }

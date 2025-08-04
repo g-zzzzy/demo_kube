@@ -48,7 +48,7 @@ type LinkCache struct {
 	SrcNode Node
 	DstNode Node
 
-	EnvIndex EnvironmentIndex
+	// EnvIndex EnvironmentIndex
 
 	Ar float64
 }

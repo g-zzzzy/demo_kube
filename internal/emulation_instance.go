@@ -2,6 +2,7 @@ package demokubenet
 
 import (
 	"log"
+	"sync"
 	"time"
 )
 
@@ -156,25 +157,47 @@ func updateEnvironmentIndex(stations []*Station, timestamp time.Time) {
 func updateLinkProperties(links []LinkCache) {
 	log.Println("updateLinkProperties...")
 	startTime := time.Now()
+	var wg sync.WaitGroup
+	numWorkers := 4
+	chunkSize := (len(links) + numWorkers - 1) / numWorkers // 向上取整
 	count := 0
-	for i := range links {
-		link := &links[i]
-		sat, ok := link.SrcNode.(*Satellite)
-		if !ok {
-			log.Printf("Error: SrcNode is not a Satellite")
-			continue
-		}
-		dst, ok := link.DstNode.(*Station)
-		if !ok {
-			log.Printf("Error: DstNode is not a Station")
-			continue
-		}
-		srcPos := sat.Position
-		dstPos := dst.position
-		count++
-		link.Ar = CalculateSatelliteLink(link, srcPos, dstPos, dst.WeatherIdx.Precipitation)
+	countMutex := sync.Mutex{}
 
+	for w := 0; w < numWorkers; w++ {
+		start := w * chunkSize
+		end := (w + 1) * chunkSize
+		if end > len(links) {
+			end = len(links)
+		}
+
+		wg.Add(1)
+		go func(start, end int) {
+			defer wg.Done()
+			localCount := 0
+			for i := start; i < end; i++ {
+				link := &links[i]
+				sat, ok := link.SrcNode.(*Satellite)
+				if !ok {
+					log.Printf("Error: SrcNode is not a Satellite")
+					continue
+				}
+				dst, ok := link.DstNode.(*Station)
+				if !ok {
+					log.Printf("Error: DstNode is not a Station")
+					continue
+				}
+				srcPos := sat.Position
+				dstPos := dst.position
+				link.Ar = CalculateSatelliteLink(link, srcPos, dstPos, dst.WeatherIdx.Precipitation)
+				localCount++
+			}
+			countMutex.Lock()
+			count += localCount
+			countMutex.Unlock()
+		}(start, end)
 	}
+
+	wg.Wait()
 	log.Printf("updateLinkProperties count: %d", count)
 	log.Printf("updateLinkProperties took %v", time.Since(startTime))
 }
