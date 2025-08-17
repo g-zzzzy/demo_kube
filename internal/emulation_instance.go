@@ -15,7 +15,7 @@ type EmulationInstance struct {
 	Links      []LinkCache
 }
 
-func NewEmulationInstanceScale(stationCount, satelliteCount int) (*EmulationInstance, error) {
+func NewEmulationInstanceScale(stationCount, satelliteCount, worknum int) (*EmulationInstance, error) {
 
 	var errList error
 	stations, err := readStationsCount("data/terminal.txt", stationCount)
@@ -24,7 +24,7 @@ func NewEmulationInstanceScale(stationCount, satelliteCount int) (*EmulationInst
 	}
 
 	// 读取卫星
-	satellites, err := readSatellitesCount("data/satellite_4000.txt", satelliteCount)
+	satellites, err := readSatellitesCount("data/satellite_20000.txt", satelliteCount)
 	if err != nil {
 		log.Fatalf("读取卫星失败: %v", err)
 	}
@@ -37,36 +37,36 @@ func NewEmulationInstanceScale(stationCount, satelliteCount int) (*EmulationInst
 		// SatelliteLinks: satelliteLinks,
 	}
 	sched.Subscribe(EasyEvent, func(eb *EventBus, event Event) error {
-		return instance.EasyCalculateLinks(time.Now())
+		return instance.EasyCalculateLinks(time.Now(), worknum)
 	})
 	return instance, errList
 }
 
-func NewEmulationInstance() (*EmulationInstance, error) {
-	var errList error
-	stations, err := readStations("data/station_data500.txt")
-	if err != nil {
-		log.Fatalf("读取站点失败: %v", err)
-	}
+// func NewEmulationInstance() (*EmulationInstance, error) {
+// 	var errList error
+// 	stations, err := readStations("data/station_data500.txt")
+// 	if err != nil {
+// 		log.Fatalf("读取站点失败: %v", err)
+// 	}
 
-	// 读取卫星
-	satellites, err := readSatellites("data/satellite_tle_data2000.txt")
-	if err != nil {
-		log.Fatalf("读取卫星失败: %v", err)
-	}
-	// satelliteLinks := MakeSatelliteLinks()
-	sched := NewEventBus(10)
-	instance := &EmulationInstance{
-		Scheduler:  sched,
-		Satellites: satellites,
-		Stations:   stations,
-		// SatelliteLinks: satelliteLinks,
-	}
-	sched.Subscribe(EasyEvent, func(eb *EventBus, event Event) error {
-		return instance.EasyCalculateLinks(time.Now())
-	})
-	return instance, errList
-}
+// 	// 读取卫星
+// 	satellites, err := readSatellites("data/satellite_tle_data2000.txt")
+// 	if err != nil {
+// 		log.Fatalf("读取卫星失败: %v", err)
+// 	}
+// 	// satelliteLinks := MakeSatelliteLinks()
+// 	sched := NewEventBus(10)
+// 	instance := &EmulationInstance{
+// 		Scheduler:  sched,
+// 		Satellites: satellites,
+// 		Stations:   stations,
+// 		// SatelliteLinks: satelliteLinks,
+// 	}
+// 	sched.Subscribe(EasyEvent, func(eb *EventBus, event Event) error {
+// 		return instance.EasyCalculateLinks(time.Now(), worknum)
+// 	})
+// 	return instance, errList
+// }
 
 func (e *EmulationInstance) Start() {
 	log.Println("emulation_instance.Start")
@@ -154,11 +154,11 @@ func updateEnvironmentIndex(stations []*Station, timestamp time.Time) {
 	log.Printf("updateEnvironmentIndex took %v", time.Since(startTime))
 }
 
-func updateLinkProperties(links []LinkCache) {
+func updateLinkProperties(links []LinkCache, worknum int) {
 	log.Println("updateLinkProperties...")
 	startTime := time.Now()
 	var wg sync.WaitGroup
-	numWorkers := 4
+	numWorkers := worknum
 	chunkSize := (len(links) + numWorkers - 1) / numWorkers // 向上取整
 	count := 0
 	countMutex := sync.Mutex{}
@@ -202,7 +202,7 @@ func updateLinkProperties(links []LinkCache) {
 	log.Printf("updateLinkProperties took %v", time.Since(startTime))
 }
 
-func (e *EmulationInstance) EasyCalculateLinks(timestamp time.Time) error {
+func (e *EmulationInstance) EasyCalculateLinks(timestamp time.Time, worknum int) error {
 	// log.Println("instance: EasyCalculateLinks")
 
 	updateSatellitePositions(e.Satellites, timestamp)
@@ -210,7 +210,7 @@ func (e *EmulationInstance) EasyCalculateLinks(timestamp time.Time) error {
 	e.Links = MakeLinks(e.Stations, e.Satellites)
 	// updateEnvironmentIndex(e.Links, timestamp)
 	updateEnvironmentIndex(e.Stations, timestamp)
-	updateLinkProperties(e.Links)
+	updateLinkProperties(e.Links, worknum)
 
 	log.Println("links count: ", len(e.Links))
 	// log.Println("Satellite size:", unsafe.Sizeof(Satellite{}))
